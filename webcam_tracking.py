@@ -1,7 +1,5 @@
 import cv2
-import numpy as np
 import mediapipe as mp
-import time
 
 class handDetector():
     def __init__(self, mode = False, maxHands = 2, detectionCon = 0.5, trackCon = 0.5):
@@ -60,7 +58,9 @@ class handDetector():
                 # Convert from ___ space to ___ space ? 
                 h, w, c = img.shape
                 cx, cy = int(lm.x * w), int(lm.y * h)
-                adjusted_z = int((lm.z * -500)) # arbitrary adjustment, can change
+                adjusted_z = int((lm.z * -1000)) # arbitrary adjustment, can change
+                adjusted_z = min(300, adjusted_z)
+                adjusted_z = max(adjusted_z, 0)
                 lmlist.append([id, cx, cy, adjusted_z])
                 if draw:
                     cv2.circle(img, (cx, cy), 3, (255, 0, 255), cv2.FILLED)
@@ -77,8 +77,8 @@ class handDetector():
 #         success, img = cap.read()
 #         img = detector.findHands(img)
 #         lmlist = detector.findPositions(img)
-#         # if len(lmlist) != 0:
-#         #     print(lmlist[4])
+#         if len(lmlist) != 0:
+#             print(lmlist[4])
         
 #         cTime = time.time()
 #         fps = 1 / (cTime - pTime)
