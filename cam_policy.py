@@ -29,7 +29,6 @@ class CamPolicy:
     def __init__(self, obs, dt=0.01):
         self.square_pos = obs['SquareNut_pos']
         self.ee_pos = obs['robot0_eef_pos']
-        
         self.cap = cv2.VideoCapture(0)
         self.detector = handDetector()
         self.pTime = time.time()
