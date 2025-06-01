@@ -1,5 +1,8 @@
 import cv2
 import mediapipe as mp
+import time
+
+
 
 class handDetector():
     def __init__(self, mode = False, maxHands = 2, detectionCon = 0.5, trackCon = 0.5):
@@ -20,6 +23,8 @@ class handDetector():
         self.mpHands = mp.solutions.hands
         self.hands = self.mpHands.Hands(static_image_mode=self.mode, max_num_hands=self.maxHands, min_detection_confidence=self.detectionCon, min_tracking_confidence=self.trackCon)
         self.mpDraw = mp.solutions.drawing_utils
+
+       
 
     def findHands(self, img, draw = True):
         """
@@ -51,6 +56,7 @@ class handDetector():
             draw (boolean): Draw the overlay or not.
         """
         lmlist = [] 
+        coord_sys_adjust = 2500 #can trial and error this, converting units essentially
         # For [handNo] hand, find a specific position
         if self.results.multi_hand_landmarks:
             myHand = self.results.multi_hand_landmarks[handNo]
@@ -58,10 +64,19 @@ class handDetector():
                 # Convert from ___ space to ___ space ? 
                 h, w, c = img.shape
                 cx, cy = int(lm.x * w), int(lm.y * h)
-                adjusted_z = int((lm.z * -1000)) # arbitrary adjustment, can change
-                adjusted_z = min(300, adjusted_z)
-                adjusted_z = max(adjusted_z, 0)
-                lmlist.append([id, cx, cy, adjusted_z])
+                #in robosuite x is depth, the -50 and /50 are for scaling to robosuite
+                adjusted_x = int((lm.z * -1000)) -50
+                adjusted_x/=50
+                #adjusted_x = min(300, adjusted_x)
+                #adjusted_x = max(adjusted_x, 0)
+
+                # in robosuite, y: left/right (right = +y), center at 0
+                rel_y = (w/2 - cx) / coord_sys_adjust
+
+                # in robosuite, z: up/down (up = +z), center at 1
+                rel_z = 1+( h / 2- cy) / coord_sys_adjust
+                
+                lmlist.append([id, adjusted_x, rel_y, rel_z])
                 if draw:
                     cv2.circle(img, (cx, cy), 3, (255, 0, 255), cv2.FILLED)
         return lmlist
@@ -75,10 +90,13 @@ class handDetector():
 
 #     while True:
 #         success, img = cap.read()
+#         img = cv2.flip(img, 1)
 #         img = detector.findHands(img)
 #         lmlist = detector.findPositions(img)
 #         if len(lmlist) != 0:
-#             print(lmlist[4])
+#             print(lmlist[0])
+#             #print(lmlist[4])
+#             #print(lmlist[8])
         
 #         cTime = time.time()
 #         fps = 1 / (cTime - pTime)
