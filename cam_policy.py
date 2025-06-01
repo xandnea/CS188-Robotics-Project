@@ -3,7 +3,19 @@ import cv2
 from webcam_tracking import handDetector
 from pid import PID
 import time
+import os
+import psutil
+def running_in_mjpython():
+   
+    p = psutil.Process(os.getpid())
+    # Get process executable path or name
+    exe = p.exe().lower()   # full executable path
+    name = p.name().lower() # process name
 
+    # Check if 'mjpython' is in the executable path or process name
+    if 'mjpython' in exe or 'mjpython' in name:
+        return True
+    return False
 
 
 class CamPolicy:
@@ -49,14 +61,15 @@ class CamPolicy:
         cTime = time.time()
         fps = 1 / (cTime - self.pTime) if cTime != self.pTime else 0 #prevent div by 0
         self.pTime = cTime
-        # try:
-        #     cv2.putText(img, str(int(fps)), (10, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 255), 3)
+        if not running_in_mjpython: #opencv2.show breaks in mjpython because of GUI issues
+            try:
+                cv2.putText(img, str(int(fps)), (10, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 255), 3)
 
-        #     cv2.imshow("Image", img)
-        #     cv2.waitKey(1)
-        # except cv2.error as e:
-        #     print(f"[OpenCV ERROR] {e}")
-        #     return np.zeros(7)
+                cv2.imshow("Image", img)
+                cv2.waitKey(1)
+            except cv2.error as e:
+                print(f"[OpenCV ERROR] {e}")
+                return np.zeros(7)
         if not lmlist or len(lmlist) < 9:
             print("[WARNING] Hand landmarks not detected.")
             return np.zeros(7)
