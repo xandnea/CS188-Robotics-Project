@@ -1,6 +1,9 @@
 import cv2
 import mediapipe as mp
 import time
+
+
+
 class handDetector():
     def __init__(self, mode = False, maxHands = 2, detectionCon = 0.5, trackCon = 0.5):
         """
@@ -20,6 +23,8 @@ class handDetector():
         self.mpHands = mp.solutions.hands
         self.hands = self.mpHands.Hands(static_image_mode=self.mode, max_num_hands=self.maxHands, min_detection_confidence=self.detectionCon, min_tracking_confidence=self.trackCon)
         self.mpDraw = mp.solutions.drawing_utils
+
+       
 
     def findHands(self, img, draw = True):
         """
@@ -51,7 +56,7 @@ class handDetector():
             draw (boolean): Draw the overlay or not.
         """
         lmlist = [] 
-        coord_sys_adjust = 5000 #can trial and error this, converting units essentially
+        coord_sys_adjust = 2500 #can trial and error this, converting units essentially
         # For [handNo] hand, find a specific position
         if self.results.multi_hand_landmarks:
             myHand = self.results.multi_hand_landmarks[handNo]
@@ -59,10 +64,12 @@ class handDetector():
                 # Convert from ___ space to ___ space ? 
                 h, w, c = img.shape
                 cx, cy = int(lm.x * w), int(lm.y * h)
-                #in robosuite x is depth
-                adjusted_x = int((lm.z * -1000)) # arbitrary adjustment, can change
-                adjusted_x = min(300, adjusted_x)
-                adjusted_x = max(adjusted_x, 0)
+                #in robosuite x is depth, the -50 and /50 are for scaling to robosuite
+                adjusted_x = int((lm.z * -1000)) -50
+                adjusted_x/=50
+                #adjusted_x = min(300, adjusted_x)
+                #adjusted_x = max(adjusted_x, 0)
+
                 # in robosuite, y: left/right (right = +y), center at 0
                 rel_y = (w/2 - cx) / coord_sys_adjust
 
@@ -88,6 +95,8 @@ class handDetector():
 #         lmlist = detector.findPositions(img)
 #         if len(lmlist) != 0:
 #             print(lmlist[0])
+#             #print(lmlist[4])
+#             #print(lmlist[8])
         
 #         cTime = time.time()
 #         fps = 1 / (cTime - pTime)

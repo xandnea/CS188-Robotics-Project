@@ -27,15 +27,39 @@ class CamPolicy:
         dt (float): control timestep.
     """
     def __init__(self, obs, dt=0.01):
-        self.square_pos = obs['SquareNut_pos']
+        #self.square_pos = obs['SquareNut_pos']
         self.ee_pos = obs['robot0_eef_pos']
         self.cap = cv2.VideoCapture(0)
         self.detector = handDetector()
         self.pTime = time.time()
         self.pid = PID(kp=2, ki=1, kd=0.1, target=self.ee_pos) 
         self.dt = dt
+         #depth calculated by using hand size
+        self.initial_hand_size = None
 
+    def compute_hand_size(self, lmlist):
+        """
+        Estimate hand size using the area of the triangle formed by the wrist and 2 outermost finger bases.
+        lmlist: list of landmarks [[id, x, y, z], ...]
+        Returns: float (size)
+        """
 
+        # area of triangle using y and z coords
+        y1 = lmlist[0][2]
+        z1 = lmlist[0][3]
+        p1 = np.array([y1,z1])
+        y2 = lmlist[5][2]
+        z2 = lmlist[5][3]
+        p2 = np.array([y2,z2])
+        y3 = lmlist[17][2]
+        z3 = lmlist[17][3]
+        p3 = np.array([y3,z3])
+        AB = p2 - p1
+        AC = p3 - p1
+        cross = np.cross(AB, AC)
+        area = np.linalg.norm(cross) / 2
+        return area
+    
     def get_action(self, robot_eef_pos: np.ndarray) -> np.ndarray:
         """
         Compute next action for the robot's end-effector.
@@ -72,16 +96,30 @@ class CamPolicy:
         if not lmlist or len(lmlist) < 9:
             print("[WARNING] Hand landmarks not detected.")
             return np.zeros(7)
+
+        #estimate hand size compared to original hand size to calc relative depth
+        #can't just use depth from camera because its relative to wrist location, not the world
+        current_hand_size = self.compute_hand_size(lmlist)
+
+        if self.initial_hand_size is None:
+            self.initial_hand_size = current_hand_size
+
+        depth_scale = self.initial_hand_size / current_hand_size  
+
+        estimated_depth = depth_scale -1 #because x should start at 0 but scaling would start at 1
+        estimated_depth = max(-0.5, min(estimated_depth, 0.25)) #clamp so robot doesnt bug out
         # Move the eef according to the wrist landmark (lmlist[0])
-        self.pid.reset(lmlist[0][1:4])
+        new_pos =  [estimated_depth] + lmlist[0][2:4]
+        
+        self.pid.reset(new_pos)
 
         # Compute grasp logic
-        tipOfPointer = np.array(lmlist[8])
-        tipOfThumb = np.array(lmlist[4])
+        tipOfPointer = np.array(lmlist[8][2:4]) #just consider y and z, simplified 
+        tipOfThumb = np.array(lmlist[4][2:4])
 
         pinchDistance = np.linalg.norm(tipOfPointer - tipOfThumb)
-
-        if (pinchDistance <= 0.5):
+        
+        if (pinchDistance <= 0.05):
             grasp = 1
         else: 
             grasp = -1
