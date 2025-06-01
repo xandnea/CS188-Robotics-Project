@@ -52,6 +52,8 @@ class PID:
             np.ndarray: PID control signal.
         """
         current_pos = np.array(current_pos, dtype=float)
+        print("target:", self.target)
+        print(current_pos)
         error = self.target - current_pos
         self.last_error_magnitude = np.linalg.norm(error)
 
