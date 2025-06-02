@@ -4,7 +4,9 @@ from webcam_tracking import handDetector
 from pid import PID
 import time
 import os
+import sys
 import psutil
+
 def running_in_mjpython():
    
     p = psutil.Process(os.getpid())
@@ -29,13 +31,36 @@ class CamPolicy:
     def __init__(self, obs, dt=0.01):
         #self.square_pos = obs['SquareNut_pos']
         self.ee_pos = obs['robot0_eef_pos']
-        self.cap = cv2.VideoCapture(0)
+        self.cap = None
+        self.webcam_available = self._initialize_webcam()
+        if not self.webcam_available:
+            print("[FATAL] No webcam available. Exiting...")
+            sys.exit(1)
         self.detector = handDetector()
         self.pTime = time.time()
         self.pid = PID(kp=2, ki=1, kd=0.1, target=self.ee_pos) 
         self.dt = dt
          #depth calculated by using hand size
         self.initial_hand_size = None
+
+    def _initialize_webcam(self):
+        """Initialize webcam and verify it's working."""
+        try:
+            cap = cv2.VideoCapture(0)
+            if not cap.isOpened():
+                print("[ERROR] Failed to open webcam.")
+                return False
+            # Try to read a frame to verify the webcam is working
+            ret, _ = cap.read()
+            if not ret:
+                print("[ERROR] Could not read frame from webcam.")
+                cap.release()
+                return False
+            self.cap = cap
+            return True
+        except Exception as e:
+            print(f"[ERROR] Failed to initialize webcam: {str(e)}")
+            return False
 
     def compute_hand_size(self, lmlist):
         """
