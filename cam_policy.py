@@ -109,7 +109,7 @@ class CamPolicy:
         cTime = time.time()
         fps = 1 / (cTime - self.pTime) if cTime != self.pTime else 0 #prevent div by 0
         self.pTime = cTime
-        if not running_in_mjpython: #opencv2.show breaks in mjpython because of GUI issues
+        if not running_in_mjpython(): #opencv2.show breaks in mjpython because of GUI issues
             try:
                 cv2.putText(img, str(int(fps)), (10, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 255), 3)
 
