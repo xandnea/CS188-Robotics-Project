@@ -6,6 +6,8 @@ import time
 import os
 import sys
 import psutil
+from scipy.spatial.transform import Rotation as R
+
 
 def running_in_mjpython():
    
@@ -38,8 +40,9 @@ class CamPolicy:
             sys.exit(1)
         self.detector = handDetector()
         self.pTime = time.time()
-        self.pid = PID(kp=2, ki=1, kd=0.1, target=self.ee_pos) 
+        self.pid = PID(kp=3, ki=1, kd=0.1, target=self.ee_pos) 
         self.dt = dt
+        self.prev_depth_values = [0 for i in range(10)]
          #depth calculated by using hand size
         self.initial_hand_size = None
 
@@ -85,6 +88,33 @@ class CamPolicy:
         area = np.linalg.norm(cross) / 2
         return area
     
+    def compute_depth(self):
+        """
+        Use a single (non palm) landmark to linearize depths and interpolate.
+
+        Returns: float (depth)
+        """
+        
+        # Cap eef depth and linearize
+        min_eef_depth = -0.5
+        max_eef_depth = 0.25
+        steps = 100 # can change
+        eef_depth = np.linspace(min_eef_depth, max_eef_depth, steps)
+
+        # Cap landmark depth and linearize
+        min_lm_depth = -0.5
+        max_lm_depth = 2.5
+        lm_depth = np.linspace(min_lm_depth, max_lm_depth, steps)
+
+        # Average landmark depth over past n values 
+        estimated_depth = np.mean(self.prev_depth_values)
+        #print(f"[INFO] Pre-Interpolated Thumb Depth: {estimated_depth}")
+
+        # Interpolate the averaged landmark depth for a smoother calculation 
+        depth = np.interp(estimated_depth, lm_depth, eef_depth)
+        #print(f"[INFO] Post-Interpolated Thumb Depth: {depth}")
+        return depth
+    
     def get_action(self, robot_eef_pos: np.ndarray) -> np.ndarray:
         """
         Compute next action for the robot's end-effector.
@@ -103,8 +133,6 @@ class CamPolicy:
             print("[ERROR] Failed to read image from webcam.")
             return np.zeros(7)
         lmlist = self.detector.findPositions(img)
-        # if len(lmlist) != 0:
-        #     print(lmlist[4])
             
         cTime = time.time()
         fps = 1 / (cTime - self.pTime) if cTime != self.pTime else 0 #prevent div by 0
@@ -122,21 +150,33 @@ class CamPolicy:
             print("[WARNING] Hand landmarks not detected.")
             return np.zeros(7)
 
-        #estimate hand size compared to original hand size to calc relative depth
-        #can't just use depth from camera because its relative to wrist location, not the world
-        current_hand_size = self.compute_hand_size(lmlist)
+        # Old way of computing depth, can compare this to compute_depth once rotation is figured out 
+            # #estimate hand size compared to original hand size to calc relative depth
+            # #can't just use depth from camera because its relative to wrist location, not the world
+            # current_hand_size = self.compute_hand_size(lmlist)
 
-        if self.initial_hand_size is None:
-            self.initial_hand_size = current_hand_size
+            # if self.initial_hand_size is None:
+            #     self.initial_hand_size = current_hand_size
 
-        depth_scale = self.initial_hand_size / current_hand_size  
+            # depth_scale = self.initial_hand_size / current_hand_size  
 
-        estimated_depth = depth_scale -1 #because x should start at 0 but scaling would start at 1
-        estimated_depth = max(-0.5, min(estimated_depth, 0.25)) #clamp so robot doesnt bug out
-        # Move the eef according to the wrist landmark (lmlist[0])
-        new_pos =  [estimated_depth] + lmlist[0][2:4]
+            # estimated_depth = depth_scale - 1 #because x should start at 0 but scaling would start at 1
+            # estimated_depth = max(-0.5, min(estimated_depth, 0.25)) #clamp so robot doesnt bug out
+            # # Move the eef according to the wrist landmark (lmlist[0])
+            # new_pos = [estimated_depth] + lmlist[0][2:4]
+
+        # Update previous depth values 
+        self.prev_depth_values.pop(0)
+        self.prev_depth_values.append(lmlist[4][1])
+
+        # Compute depth 
+        depth = self.compute_depth()
+        new_pos = [depth] + lmlist[0][2:4]
         
         self.pid.reset(new_pos)
+
+        # Compute rotation
+        #rotation = self.compute_rotation(lmlist)
 
         # Compute grasp logic
         tipOfPointer = np.array(lmlist[8][2:4]) #just consider y and z, simplified 
@@ -144,7 +184,7 @@ class CamPolicy:
 
         pinchDistance = np.linalg.norm(tipOfPointer - tipOfThumb)
         
-        if (pinchDistance <= 0.05):
+        if (pinchDistance <= 0.02):
             grasp = 1
         else: 
             grasp = -1
@@ -153,6 +193,7 @@ class CamPolicy:
         action = np.zeros(7)
         delta = self.pid.update(current_pos=robot_eef_pos, dt=self.dt)
         action[:3] = delta
+        #action[3:6] = rotation
         action[-1] = grasp
         return action
 
