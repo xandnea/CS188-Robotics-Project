@@ -34,7 +34,7 @@ for _ in range(5):
     obs = env.reset()
     policy = CamPolicy(obs) 
     for _ in range(2500):
-        action = policy.get_action(obs['robot0_eef_pos'])
+        action = policy.get_action(obs['robot0_eef_pos'], obs['robot0_eef_quat'])
         obs, reward, done, info = env.step(action)  # take action in the environment
         env.render()  # render on display
         if reward == 1.0:

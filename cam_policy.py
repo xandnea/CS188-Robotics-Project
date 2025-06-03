@@ -33,6 +33,7 @@ class CamPolicy:
     def __init__(self, obs, dt=0.01):
         #self.square_pos = obs['SquareNut_pos']
         self.ee_pos = obs['robot0_eef_pos']
+
         self.cap = None
         self.webcam_available = self._initialize_webcam()
         if not self.webcam_available:
@@ -40,10 +41,11 @@ class CamPolicy:
             sys.exit(1)
         self.detector = handDetector()
         self.pTime = time.time()
-        self.pid = PID(kp=3, ki=1, kd=0.1, target=self.ee_pos) 
+        self.pid = PID(kp=5, ki=2, kd=0.0, target=self.ee_pos) 
         self.dt = dt
+
         self.prev_depth_values = [0 for i in range(10)]
-         #depth calculated by using hand size
+        self.target_rot_vec = np.zeros(3)
         self.initial_hand_size = None
 
     def _initialize_webcam(self):
@@ -94,7 +96,7 @@ class CamPolicy:
 
         Returns: float (depth)
         """
-        
+
         # Cap eef depth and linearize
         min_eef_depth = -0.5
         max_eef_depth = 0.25
@@ -108,14 +110,45 @@ class CamPolicy:
 
         # Average landmark depth over past n values 
         estimated_depth = np.mean(self.prev_depth_values)
-        #print(f"[INFO] Pre-Interpolated Thumb Depth: {estimated_depth}")
+        print(f"[INFO] Pre-Interpolated Thumb Depth: {estimated_depth}")
 
         # Interpolate the averaged landmark depth for a smoother calculation 
         depth = np.interp(estimated_depth, lm_depth, eef_depth)
-        #print(f"[INFO] Post-Interpolated Thumb Depth: {depth}")
+        print(f"[INFO] Post-Interpolated Thumb Depth: {depth}")
         return depth
     
-    def get_action(self, robot_eef_pos: np.ndarray) -> np.ndarray:
+    def compute_rotation(self, lmlist):
+        """
+        Create axes based on landmarks of the hand and compute rotation.
+        lmlist: list of landmarks [[id, x, y, z], ...]
+        Returns: array (rotation vector)
+        """
+
+        # Create points
+        wrist = np.array(lmlist[0][1:4])
+        pinky_base = np.array(lmlist[17][1:4])
+        thumb_base = np.array(lmlist[1][1:4])
+
+        # Create axes, Z should point where the palm faces
+        z_axis = np.cross(pinky_base - wrist, thumb_base - wrist)
+        z_axis /= np.linalg.norm(z_axis)
+
+        x_axis = np.array(thumb_base - wrist)
+        x_axis /= np.linalg.norm(x_axis)
+
+        y_axis = np.cross(z_axis, x_axis)
+        y_axis /= np.linalg.norm(y_axis)
+
+        # Compose rotation matrix
+        rot_mat = np.stack([x_axis, y_axis, z_axis], axis=1)
+
+        rot_vec = R.from_matrix(rot_mat).as_rotvec()
+        #print(f"[DEBUG] Axes: {x_axis, y_axis, z_axis}")
+        #print(f"[DEBUG] Rotation Vector: {rot_vec}")
+        return rot_vec
+
+    
+    def get_action(self, robot_eef_pos: np.ndarray, robot_eef_quat: np.ndarray) -> np.ndarray:
         """
         Compute next action for the robot's end-effector.
 
@@ -126,6 +159,7 @@ class CamPolicy:
             np.ndarray: Action vector [dx,dy,dz,0,0,0,grasp].
         """
 
+        # Webcam Initialization 
         success, img = self.cap.read()
         
         img = self.detector.findHands(img)
@@ -172,18 +206,18 @@ class CamPolicy:
         # Compute depth 
         depth = self.compute_depth()
         new_pos = [depth] + lmlist[0][2:4]
-        
         self.pid.reset(new_pos)
 
         # Compute rotation
-        #rotation = self.compute_rotation(lmlist)
+        target_rot = R.from_rotvec(self.compute_rotation(lmlist))
+        current_rot = R.from_quat(robot_eef_quat)
+        delta_rot = target_rot * current_rot.inv()
+        delta_rot = delta_rot.as_rotvec()
 
         # Compute grasp logic
         tipOfPointer = np.array(lmlist[8][2:4]) #just consider y and z, simplified 
         tipOfThumb = np.array(lmlist[4][2:4])
-
         pinchDistance = np.linalg.norm(tipOfPointer - tipOfThumb)
-        
         if (pinchDistance <= 0.02):
             grasp = 1
         else: 
@@ -193,7 +227,7 @@ class CamPolicy:
         action = np.zeros(7)
         delta = self.pid.update(current_pos=robot_eef_pos, dt=self.dt)
         action[:3] = delta
-        #action[3:6] = rotation
+        action[3:6] = delta_rot
         action[-1] = grasp
         return action
 
