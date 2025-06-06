@@ -105,19 +105,19 @@ class CamPolicy:
 
         # Cap landmark depth and linearize
         min_lm_depth = -0.5
-        max_lm_depth = 2.5
+        max_lm_depth = 1.25
         lm_depth = np.linspace(min_lm_depth, max_lm_depth, steps)
 
         # Average landmark depth over past n values 
         estimated_depth = np.mean(self.prev_depth_values)
-        print(f"[INFO] Pre-Interpolated Thumb Depth: {estimated_depth}")
+        #print(f"[INFO] Pre-Interpolated Pinky Depth: {estimated_depth}")
 
         # Interpolate the averaged landmark depth for a smoother calculation 
         depth = np.interp(estimated_depth, lm_depth, eef_depth)
-        print(f"[INFO] Post-Interpolated Thumb Depth: {depth}")
+        #print(f"[INFO] Post-Interpolated Pinky Depth: {depth}")
         return depth
-    
-    def compute_rotation(self, lmlist):
+
+    def compute_rotation(self, lmlist, img):
         """
         Create axes based on landmarks of the hand and compute rotation.
         lmlist: list of landmarks [[id, x, y, z], ...]
@@ -125,19 +125,20 @@ class CamPolicy:
         """
 
         # Create points
-        wrist = np.array(lmlist[0][1:4])
+        wrist = np.array(lmlist[0][1:4])         # x (depth; always -1 for wrist), y, z 
         pinky_base = np.array(lmlist[17][1:4])
         thumb_base = np.array(lmlist[1][1:4])
+        #wrist_normal = np.array(lmlist[21][1:4])
 
         # Create axes, Z should point where the palm faces
-        z_axis = np.cross(pinky_base - wrist, thumb_base - wrist)
-        z_axis /= np.linalg.norm(z_axis)
+        def safe_norm(v, eps=1e-6):
+            return v / (np.linalg.norm(v) + eps)
 
-        x_axis = np.array(thumb_base - wrist)
-        x_axis /= np.linalg.norm(x_axis)
-
-        y_axis = np.cross(z_axis, x_axis)
-        y_axis /= np.linalg.norm(y_axis)
+        v1 = thumb_base - wrist
+        v2 = pinky_base - wrist
+        z_axis = safe_norm(np.cross(v1, v2))
+        x_axis = safe_norm(v1)
+        y_axis = safe_norm(np.cross(z_axis, x_axis))
 
         # Compose rotation matrix
         rot_mat = np.stack([x_axis, y_axis, z_axis], axis=1)
@@ -145,8 +146,9 @@ class CamPolicy:
         rot_vec = R.from_matrix(rot_mat).as_rotvec()
         #print(f"[DEBUG] Axes: {x_axis, y_axis, z_axis}")
         #print(f"[DEBUG] Rotation Vector: {rot_vec}")
-        return rot_vec
 
+        return rot_vec
+    
     
     def get_action(self, robot_eef_pos: np.ndarray, robot_eef_quat: np.ndarray) -> np.ndarray:
         """
@@ -161,47 +163,40 @@ class CamPolicy:
 
         # Webcam Initialization 
         success, img = self.cap.read()
-        
-        img = self.detector.findHands(img)
         if not success or img is None:
             print("[ERROR] Failed to read image from webcam.")
             return np.zeros(7)
+        
+        img = self.detector.findHands(img)
         lmlist = self.detector.findPositions(img)
             
-        cTime = time.time()
-        fps = 1 / (cTime - self.pTime) if cTime != self.pTime else 0 #prevent div by 0
-        self.pTime = cTime
+        # Moved rotation calculation to here so it draws the axes before imshow
+        target_rot = R.from_rotvec(np.zeros(3))
+        if lmlist or len(lmlist) >= 9:
+            target_rot = R.from_rotvec(self.compute_rotation(lmlist, img))
+        
+        # Calculate webcam framerate 
+        fps = int(1 / (time.time() - self.pTime)) if time.time() != self.pTime else 0
+        self.pTime = time.time()
+
+        # Show image 
         if not running_in_mjpython(): #opencv2.show breaks in mjpython because of GUI issues
             try:
                 cv2.putText(img, str(int(fps)), (10, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 255), 3)
-
                 cv2.imshow("Image", img)
                 cv2.waitKey(1)
             except cv2.error as e:
                 print(f"[OpenCV ERROR] {e}")
                 return np.zeros(7)
+        
+        # Ensure the existence of landmarks
         if not lmlist or len(lmlist) < 9:
             print("[WARNING] Hand landmarks not detected.")
             return np.zeros(7)
 
-        # Old way of computing depth, can compare this to compute_depth once rotation is figured out 
-            # #estimate hand size compared to original hand size to calc relative depth
-            # #can't just use depth from camera because its relative to wrist location, not the world
-            # current_hand_size = self.compute_hand_size(lmlist)
-
-            # if self.initial_hand_size is None:
-            #     self.initial_hand_size = current_hand_size
-
-            # depth_scale = self.initial_hand_size / current_hand_size  
-
-            # estimated_depth = depth_scale - 1 #because x should start at 0 but scaling would start at 1
-            # estimated_depth = max(-0.5, min(estimated_depth, 0.25)) #clamp so robot doesnt bug out
-            # # Move the eef according to the wrist landmark (lmlist[0])
-            # new_pos = [estimated_depth] + lmlist[0][2:4]
-
         # Update previous depth values 
         self.prev_depth_values.pop(0)
-        self.prev_depth_values.append(lmlist[4][1])
+        self.prev_depth_values.append(lmlist[9][1]) # testing different landmarks for depth computation
 
         # Compute depth 
         depth = self.compute_depth()
@@ -209,16 +204,21 @@ class CamPolicy:
         self.pid.reset(new_pos)
 
         # Compute rotation
-        target_rot = R.from_rotvec(self.compute_rotation(lmlist))
+        # target_rot = R.from_rotvec(self.compute_rotation(lmlist, img))
         current_rot = R.from_quat(robot_eef_quat)
         delta_rot = target_rot * current_rot.inv()
         delta_rot = delta_rot.as_rotvec()
 
+        # Smooth & limit rotation
+        rot_gain = 0.5
+        max_rot_mag = 0.3
+        delta_rot = np.clip(rot_gain * delta_rot, -max_rot_mag, max_rot_mag)
+
         # Compute grasp logic
-        tipOfPointer = np.array(lmlist[8][2:4]) #just consider y and z, simplified 
+        tipOfPointer = np.array(lmlist[8][2:4]) # y and z for better accuracy 
         tipOfThumb = np.array(lmlist[4][2:4])
         pinchDistance = np.linalg.norm(tipOfPointer - tipOfThumb)
-        if (pinchDistance <= 0.02):
+        if (pinchDistance <= 0.03):
             grasp = 1
         else: 
             grasp = -1
@@ -232,3 +232,17 @@ class CamPolicy:
         return action
 
 
+# Old way of computing depth, can compare this to compute_depth once rotation is figured out 
+            # #estimate hand size compared to original hand size to calc relative depth
+            # #can't just use depth from camera because its relative to wrist location, not the world
+            # current_hand_size = self.compute_hand_size(lmlist)
+
+            # if self.initial_hand_size is None:
+            #     self.initial_hand_size = current_hand_size
+
+            # depth_scale = self.initial_hand_size / current_hand_size  
+
+            # estimated_depth = depth_scale - 1 #because x should start at 0 but scaling would start at 1
+            # estimated_depth = max(-0.5, min(estimated_depth, 0.25)) #clamp so robot doesnt bug out
+            # # Move the eef according to the wrist landmark (lmlist[0])
+            # new_pos = [estimated_depth] + lmlist[0][2:4]
