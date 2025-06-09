@@ -32,9 +32,9 @@ This should open two windows. One with the robosuite simulated robot and another
 ## Goals
 
 Control a robot arm using hand gestures:
-
-* Wrist movement → arm translation
-* Finger/palm orientation → arm rotation
+* Left Hand sets the method of control for the Right Hand (Open → translation, Closed → rotation)
+* Right Hand Wrist movement → arm translation
+* Right Hand Finger/palm orientation → arm rotation
 * Pinch gesture → open/close gripper
 
 A user should be able to:
