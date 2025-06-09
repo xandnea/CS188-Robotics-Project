@@ -34,17 +34,27 @@ class handDetector():
         Args:
             img (array): Image to be converted and overlayed.
             draw (boolean): Draw the overlay or not.
+
+        Returns:
+            The img and a dictionary mapping hand numbers to left/right labels
         """
         # Convert from BGR to RGB and process 
         imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         self.results = self.hands.process(imgRGB)
-
+        handed_info = []
         # If landmarks are found, draw landmarks on webcam
         if self.results.multi_hand_landmarks:
-            for handLms in self.results.multi_hand_landmarks:
+            for idx,handLms in enumerate(self.results.multi_hand_landmarks):
                 if draw:
                     self.mpDraw.draw_landmarks(img, handLms, self.mpHands.HAND_CONNECTIONS)
-        return img
+                
+                #label hands
+                hand_label = "Unknown"
+                if self.results.multi_handedness:
+                    hand_label = self.results.multi_handedness[idx].classification[0].label  # 'Left' or 'Right'
+                    #print(f"Hand {idx}: {hand_label}")
+                handed_info.append((idx, hand_label))
+        return img, handed_info
     
     # Returns a 2D list of positions where each entry is [id, cx, cy, z]
     def findPositions(self, img, handNo = 0, draw = True):
@@ -57,10 +67,9 @@ class handDetector():
             draw (boolean): Draw the overlay or not.
         """
         lmlist = [] 
-        coord_sys_adjust = 2500 #can trial and error this, converting units essentially
-        
+        coord_sys_adjust = 2250 #can trial and error this, converting units essentially
         # For [handNo] hand, find a specific position
-        if self.results.multi_hand_landmarks:
+        if self.results.multi_hand_landmarks and len(self.results.multi_hand_landmarks) > handNo:
             myHand = self.results.multi_hand_landmarks[handNo]
             palm_normal = [] # coming from wrist 
             for id, lm in enumerate(myHand.landmark):
