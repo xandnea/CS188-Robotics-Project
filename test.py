@@ -17,16 +17,27 @@ placement_initializer = UniformRandomSampler(
 )
 
 # create environment instance
+# [0] Baxter
+# [1] GR1ArmsOnly
+# [2] IIWA
+# [3] Jaco
+# [4] Kinova3
+# [5] Panda
+# [6] Sawyer
+# [7] SpotWithArmFloating
+# [8] Tiago
+# [9] UR5e
 env = suite.make(
     env_name="NutAssemblySquare", 
     robots="Panda", 
     has_renderer=True,
-    #render_camera="robot0_eye_in_hand", # ('frontview', 'birdview', 'agentview', 'sideview', 'robot0_robotview', 'robot0_eye_in_hand')
+    render_camera="frontview", # ('frontview', 'birdview', 'agentview', 'sideview', 'robot0_robotview', 'robot0_eye_in_hand')
     has_offscreen_renderer=False,
     use_camera_obs=False,
-    placement_initializer=placement_initializer,
+    #placement_initializer=placement_initializer,
     ignore_done=True  
 )
+
 
 success_rate = 0
 # reset the environment
