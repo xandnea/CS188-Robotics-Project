@@ -284,17 +284,9 @@ class CamPolicy:
                 self.base_rot = current_rot
                 self.left_hand_was_fist = True
                 print("[INFO] Base rotation captured.")
-
-                # Compute rotation
-            # target_rot = R.from_rotvec(self.compute_rotation(lmlist, img))
-            # current_rot = R.from_quat(robot_eef_quat)
-            # delta_rot = target_rot * current_rot.inv()
-            # delta_rot = delta_rot.as_rotvec()
-
-            # Smooth & limit rotation
             
 
-            #Alternate way of doing rotation, relative to base rotation set each time you make a fist
+            #rotation relative to base rotation set each time you make a fist
             deviation_rot = current_rot * self.base_rot.inv()
             delta_rot = deviation_rot.as_rotvec()
             
@@ -303,26 +295,6 @@ class CamPolicy:
             max_rot_mag = 0.3
             delta_rot = np.clip(rot_gain * delta_rot, -max_rot_mag, max_rot_mag)
             action[3:6] = delta_rot
-
-
-            # angle_deg = np.degrees(np.linalg.norm(deviation_rot.as_rotvec()))
-            # print("Deviation from og: ", angle_deg)
-            # if angle_deg >15:
-            #     current_rot = R.from_quat(robot_eef_quat)
-            #     key_times = [0, 1]
-            #     rotations = R.concatenate([current_rot, current_rot * deviation_rot])
-            #     slerp = Slerp(key_times, rotations)
-
-            #     interp_fraction = 0.4 #tweak
-            #     interpolated_rot = slerp(interp_fraction)
-
-            #     #delta_rot = (interpolated_rot * current_rot.inv()).as_rotvec()
-            #     delta_rot = deviation_rot.as_rotvec()
-            #     rot_gain = 0.5
-            #     max_rot_mag = 0.3
-            #     delta_rot = np.clip(rot_gain * delta_rot, -max_rot_mag, max_rot_mag)
-            #     action[3:6] = delta_rot
-
             
 
         else: 
@@ -356,19 +328,3 @@ class CamPolicy:
         action[:3] = delta
         action[-1] = grasp
         return action
-
-
-# Old way of computing depth, can compare this to compute_depth once rotation is figured out 
-            # #estimate hand size compared to original hand size to calc relative depth
-            # #can't just use depth from camera because its relative to wrist location, not the world
-            # current_hand_size = self.compute_hand_size(lmlist)
-
-            # if self.initial_hand_size is None:
-            #     self.initial_hand_size = current_hand_size
-
-            # depth_scale = self.initial_hand_size / current_hand_size  
-
-            # estimated_depth = depth_scale - 1 #because x should start at 0 but scaling would start at 1
-            # estimated_depth = max(-0.5, min(estimated_depth, 0.25)) #clamp so robot doesnt bug out
-            # # Move the eef according to the wrist landmark (lmlist[0])
-            # new_pos = [estimated_depth] + lmlist[0][2:4]
