@@ -1,0 +1,20 @@
+\begin{thebibliography}{2}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[{MediaPipe Read the Docs}()]{MediaPipeHands}
+{MediaPipe Read the Docs}.
+\newblock {MediaPipe Hands}.
+\newblock \url{https://mediapipe.readthedocs.io/en/latest/solutions/hands.html}.
+\newblock Accessed: Jun. 9, 2025.
+
+\bibitem[Gaffar()]{MediaPipeGuide}
+S.~A. Gaffar.
+\newblock Building a hand tracking system using opencv.
+\newblock \url{https://www.analyticsvidhya.com/blog/2021/07/building-a-hand-tracking-system-using-opencv/}.
+\newblock Accessed: Jun. 9, 2025.
+
+\end{thebibliography}
