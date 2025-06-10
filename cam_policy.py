@@ -33,7 +33,6 @@ class CamPolicy:
         dt (float): control timestep.
     """
     def __init__(self, obs, dt=0.01):
-        #self.square_pos = obs['SquareNut_pos']
         self.ee_pos = obs['robot0_eef_pos']
 
         self.cap = None
@@ -51,6 +50,7 @@ class CamPolicy:
         self.initial_hand_size = None
         self.base_rot = None
         self.left_hand_was_fist = False
+        self.grasp = -1
 
     def _initialize_webcam(self):
         """Initialize webcam and verify it's working."""
@@ -192,15 +192,12 @@ class CamPolicy:
             wrist_first_vec = [first[i] - wrist[i] for i in range(1, 4)]
             first_second_vec = [second[i] - first[i] for i in range(1, 4)]
             angle_first_second = self.vector_angle(wrist_first_vec,first_second_vec) #unused
-            #print("angle 1-2: ", angle_first_second)
             
             second_third_vec = [third[i] - second[i] for i in range(1, 4)]
             angle_second_third = self.vector_angle(first_second_vec,second_third_vec)
-            #print("angle 2-3: ", angle_second_third)
             
             third_tip_vec = [tip[i] - third[i] for i in range(1, 4)]
             angle_third_tip = self.vector_angle(second_third_vec, third_tip_vec) #unused
-            #print("angle 3-tip: ", angle_third_tip)
             
             #this is from trial and error, in curling 2nd to 3rd was the most reliably bent
             if angle_second_third>160:
@@ -235,8 +232,7 @@ class CamPolicy:
         if handed_info == []:
             print("[ERROR] Failed to label handedness for hands.")
             return np.zeros(7)
-        # Moved rotation calculation to here so it draws the axes before imshow
-        target_rot = R.from_rotvec(np.zeros(3))
+
         lmlist_left = []
         lmlist_right = []
         for idx, label in handed_info:
@@ -269,13 +265,11 @@ class CamPolicy:
 
 
         
-        #decide whether to compute rotation or translation based on whether
-            # left hand is in a fist
-        
 
         action = np.zeros(7)
-        grasp = -1
 
+         #decide whether to compute rotation or translation based on whether
+            # left hand is in a fist
         if left_hand_fist:
 
             current_rot = R.from_rotvec(self.compute_rotation(lmlist_right))
@@ -300,10 +294,7 @@ class CamPolicy:
         else: 
             self.left_hand_was_fist= False
             self.base_rot = None
-            # Update previous depth values
-            # Update previous depth values 
-            # self.prev_depth_values.pop(0)
-            # self.prev_depth_values.append(lmlist[9][1]) # testing different landmarks for depth computation
+
             self.prev_depth_values.pop(0)
             self.prev_depth_values.append(lmlist_right[4][1])
 
@@ -318,7 +309,9 @@ class CamPolicy:
             tipOfThumb = np.array(lmlist_right[4][2:4])
             pinchDistance = np.linalg.norm(tipOfPointer - tipOfThumb)
             if (pinchDistance <= 0.04):
-                grasp = 1
+                self.grasp = 1
+            else:
+                self.grasp=-1
         
        
 
@@ -326,5 +319,5 @@ class CamPolicy:
         
         delta = self.pid.update(current_pos=robot_eef_pos, dt=self.dt)
         action[:3] = delta
-        action[-1] = grasp
+        action[-1] = self.grasp
         return action

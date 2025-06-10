@@ -16,19 +16,8 @@ placement_initializer = UniformRandomSampler(
     z_offset=0.02,
 )
 
-# create environment instance
-# [0] Baxter
-# [1] GR1ArmsOnly
-# [2] IIWA
-# [3] Jaco
-# [4] Kinova3
-# [5] Panda
-# [6] Sawyer
-# [7] SpotWithArmFloating
-# [8] Tiago
-# [9] UR5e
 env = suite.make(
-    env_name="NutAssemblySquare", 
+    env_name="Stack", 
     robots="Panda", 
     has_renderer=True,
     render_camera="frontview", # ('frontview', 'birdview', 'agentview', 'sideview', 'robot0_robotview', 'robot0_eye_in_hand')
