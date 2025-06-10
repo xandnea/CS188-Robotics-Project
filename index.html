@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GestureBot - Intuitive Robot Arm Control via Hand Tracking</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --text-color: #333;
+            --background-color: #f5f6fa;
+            --spacing-xs: 0.5rem;
+            --spacing-sm: 1rem;
+            --spacing-md: 2rem;
+            --spacing-lg: 3rem;
+            --spacing-xl: 4rem;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--background-color);
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: var(--spacing-lg) 0;
+            text-align: center;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-md);
+        }
+
+        .team {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            flex-wrap: wrap;
+            margin-top: var(--spacing-sm);
+        }
+
+        .team-member {
+            color: #ecf0f1;
+            font-size: 0.9rem;
+        }
+
+        main {
+            padding: var(--spacing-md) 0;
+        }
+
+        section {
+            margin-bottom: var(--spacing-xl);
+            padding: var(--spacing-md) 0;
+        }
+
+        section:last-child {
+            margin-bottom: 0;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        h2 {
+            color: var(--primary-color);
+            margin-bottom: var(--spacing-md);
+            font-size: 1.8rem;
+        }
+
+        p {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-md);
+        }
+
+        .feature-card {
+            background: white;
+            padding: var(--spacing-md);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .feature-card h3 {
+            color: var(--secondary-color);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .feature-card p {
+            margin-bottom: 0;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: var(--spacing-md) 0;
+            display: block;
+        }
+
+        ul {
+            margin-left: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        li {
+            margin-bottom: var(--spacing-xs);
+        }
+
+        li:last-child {
+            margin-bottom: 0;
+        }
+
+        footer {
+            background-color: var(--primary-color);
+            color: white;
+            text-align: center;
+            padding: var(--spacing-md) 0;
+            margin-top: var(--spacing-xl);
+        }
+
+        footer p {
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 768px) {
+            :root {
+                --spacing-md: 1.5rem;
+                --spacing-lg: 2rem;
+                --spacing-xl: 3rem;
+            }
+            
+            .container {
+                padding: 0 var(--spacing-sm);
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            h2 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>GestureBot</h1>
+            <p>Intuitive Robot Arm Control via Hand Tracking</p>
+            <div class="team">
+                <div class="team-member">Alexander Neary</div>
+                <div class="team-member">•</div>
+                <div class="team-member">Brenna Kjorness</div>
+                <div class="team-member">•</div>
+                <div class="team-member">Clayton Castro</div>
+            </div>
+            <div class="team">
+                <div class="team-member">University of California Los Angeles - CS 188</div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section>
+            <h2>Project Overview</h2>
+            <p>GestureBot is an innovative project that enables intuitive control of robotic manipulators using hand gestures captured through a single RGB camera. By leveraging computer vision techniques with OpenCV and MediaPipe, the system allows for full 6DoF (degrees of freedom) control of a robot's end effector, including both translational and rotational movements.</p>
+            <img src="Report/hand-landmarks-webcam.jpeg" alt="Hand landmarks tracking demonstration">
+        </section>
+
+        <section>
+            <h2>Key Features</h2>
+            <div class="features">
+                <div class="feature-card">
+                    <h3>Hand Tracking</h3>
+                    <p>Utilizes MediaPipe to detect and track 21 3D landmarks of the hand in real-time, enabling precise gesture recognition and control.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Intuitive Control</h3>
+                    <p>Separate modes for rotation and translation controlled by left-hand gestures, making complex manipulations more manageable.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Gripper Operation</h3>
+                    <p>Simple pinching gestures control the robot's gripper, allowing for natural interaction with objects in the environment.</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Technical Implementation</h2>
+            <p>The system employs several sophisticated components:</p>
+            <ul>
+                <li>MediaPipe for real-time hand landmark detection</li>
+                <li>OpenCV for image processing and visual feedback</li>
+                <li>Custom coordinate system conversion between MediaPipe and Robosuite</li>
+                <li>Advanced depth calculation using relative landmark positions</li>
+                <li>Rotation matrix computation using hand orientation</li>
+            </ul>
+            <img src="Report/fist-rotation.png" alt="Rotation control demonstration">
+        </section>
+
+        <section>
+            <h2>Results and Achievements</h2>
+            <p>GestureBot successfully demonstrates:</p>
+            <ul>
+                <li>Real-time 3D tracking and control of robot end-effector</li>
+                <li>Accurate rotation and translation mapping</li>
+                <li>Reliable gripper control through gesture recognition</li>
+                <li>Completion of complex manipulation tasks including stacking blocks and door handling</li>
+            </ul>
+            <img src="Report/gripper.png" alt="Gripper control demonstration">
+        </section>
+
+        <section>
+            <h2>Demo</h2>
+            <video controls width="250">
+              <source src="assets/demo.mp4" type="video/mp4" />
+            </video>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2024 GestureBot Project - UCLA CS 188</p>
+        </div>
+    </footer>
+</body>
+</html> 
