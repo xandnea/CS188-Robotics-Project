@@ -99,8 +99,8 @@ being tracked (see Figure \ref{fig:hand-landmarks-webcam}).
 \subsection{Coordinate System Conversion}
 The MediaPipe axes and coordinate systems are different from the Robosuite
 system, so we had to do conversions and scaling to translate the coordinates.
-Robosuite also expects the robot end-effector to start at 0,0,1, while the
-Mediapipe expects 0,0,0, so we tweaked the origins. 
+Robosuite also expects the robot end-effector to start at (0,0,1), while the
+Mediapipe expects (0,0,0), so we tweaked the origins. 
 \subsection{Depth Calculation}
 The built-in depth coordinates in MediaPipe are only relative to the wrist, so
 they are better for calculating pose than depth. By using a single point (other
@@ -267,11 +267,12 @@ project worked well cross-platform and debugged depencency issues.
 
 \clearpage
 % The acknowledgments are automatically included only in the final and preprint versions of the paper.
-\acknowledgments{Thank you to Yuchen Cui, Seth Zhao, and Raayan Dhar for all their help with learning robot control and planning in Robosuite!}
+\acknowledgments{Thank you to Yuchen Cui, Seth Zhao, and Raayan Dhar for all their help with learning robot planning and control in Robosuite!}
 
 %===============================================================================
 
 % no \bibliographystyle is required, since the corl style is automatically used.
+\raggedright
 \bibliography{report}  % .bib
 
 \end{document}
