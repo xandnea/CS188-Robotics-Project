@@ -1,7 +1,8 @@
 # GestureBot
 
 **Intuitive Robot Arm Control via Hand Tracking**
-
+## Robosuite
+Ensure you have Robosuite properly installed for your environment, see: https://robosuite.ai/docs/installation.html.
 ## Dependencies
 
 ```bash
@@ -18,7 +19,6 @@ export DYLD_LIBRARY_PATH="/usr/lib:/opt/homebrew/opt/zlib/lib"
 ## Run
 
 To start the interactive environment:
-
 ```bash
 python test.py
 # on macOS
